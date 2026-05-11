@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ModMonolith.Shared\ModMonolith.Shared.csproj" />
+    <ProjectReference Include="..\ModMonolith.Modules.Catalog\ModMonolith.Modules.Catalog.csproj" />
+    <ProjectReference Include="..\ModMonolith.Modules.Orders\ModMonolith.Modules.Orders.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ModMonolith.Web</AssemblyName>
+    <RootNamespace>ModMonolith.Web</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

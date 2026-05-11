@@ -1,0 +1,179 @@
+@model HomeIndexViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-shell">
+    <header class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">ASP.NET Core MVC + SQL Server</p>
+            <h1>Modular monolith, expressed through controllers and views.</h1>
+            <p class="lede">
+                One deployable ASP.NET application, one relational database, and modules that still own their
+                boundaries while the user-facing page is rendered with the model-view-controller pattern.
+            </p>
+        </div>
+        <div class="hero-panel">
+            <div class="panel-label">Running modules</div>
+            <ul class="module-list">
+                @foreach (var moduleName in Model.Modules)
+                {
+                    <li>@moduleName</li>
+                }
+            </ul>
+            <div class="status-line">The module APIs remain available under <code>/api/*</code>.</div>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(Model.DatabaseUnavailableMessage))
+    {
+        <section class="banner banner-warning">
+            @Model.DatabaseUnavailableMessage
+        </section>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <section class="banner @(Model.StatusType == "success" ? "banner-success" : "banner-warning")">
+            @Model.StatusMessage
+        </section>
+    }
+
+    <main class="layout">
+        <section class="card card-wide">
+            <div class="section-head">
+                <div>
+                    <p class="section-kicker">Catalog Module</p>
+                    <h2>Products</h2>
+                </div>
+                <a class="button button-secondary" asp-action="Index">Refresh</a>
+            </div>
+
+            @if (Model.Products.Count == 0)
+            {
+                <p class="empty-state">No products are available yet.</p>
+            }
+            else
+            {
+                <div class="product-grid">
+                    @foreach (var product in Model.Products)
+                    {
+                        <article class="product-card">
+                            <div class="product-meta">
+                                <h3>@product.Name</h3>
+                                <p class="product-id">@product.Id</p>
+                            </div>
+                            <div class="product-stats">
+                                <span class="price">@product.Price.ToString("C")</span>
+                                <span class="stock">@product.StockOnHand in stock</span>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="card">
+            <div class="section-head">
+                <div>
+                    <p class="section-kicker">Catalog Module</p>
+                    <h2>New product</h2>
+                </div>
+            </div>
+            <form asp-action="CreateProduct" method="post" class="stacked-form">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="form-message error"></div>
+                <label>
+                    <span>Name</span>
+                    <input asp-for="ProductForm.Name" placeholder="Event-driven Coffee Beans" />
+                    <span asp-validation-for="ProductForm.Name" class="field-validation"></span>
+                </label>
+                <label>
+                    <span>Price</span>
+                    <input asp-for="ProductForm.Price" type="number" min="0.01" step="0.01" placeholder="24.99" />
+                    <span asp-validation-for="ProductForm.Price" class="field-validation"></span>
+                </label>
+                <label>
+                    <span>Stock</span>
+                    <input asp-for="ProductForm.StockQuantity" type="number" min="0" placeholder="12" />
+                    <span asp-validation-for="ProductForm.StockQuantity" class="field-validation"></span>
+                </label>
+                <button class="button" type="submit">Create product</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="section-head">
+                <div>
+                    <p class="section-kicker">Orders Module</p>
+                    <h2>Create order</h2>
+                </div>
+            </div>
+            <form asp-action="CreateOrder" method="post" class="stacked-form">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="form-message error"></div>
+                <label>
+                    <span>Product</span>
+                    @if (Model.Products.Count == 0)
+                    {
+                        <select asp-for="OrderForm.ProductId" asp-items="@(new SelectList(Array.Empty<object>()))" disabled="disabled"></select>
+                    }
+                    else
+                    {
+                        <select asp-for="OrderForm.ProductId" asp-items="@(new SelectList(Model.Products, "Id", "Name"))"></select>
+                    }
+                    <span asp-validation-for="OrderForm.ProductId" class="field-validation"></span>
+                </label>
+                <label>
+                    <span>Quantity</span>
+                    <input asp-for="OrderForm.Quantity" type="number" min="1" />
+                    <span asp-validation-for="OrderForm.Quantity" class="field-validation"></span>
+                </label>
+                @if (Model.Products.Count == 0)
+                {
+                    <button class="button" type="submit" disabled="disabled">Submit order</button>
+                }
+                else
+                {
+                    <button class="button" type="submit">Submit order</button>
+                }
+            </form>
+        </section>
+
+        <section class="card card-wide">
+            <div class="section-head">
+                <div>
+                    <p class="section-kicker">Orders Module</p>
+                    <h2>Recent orders</h2>
+                </div>
+                <a class="button button-secondary" asp-action="Index">Refresh</a>
+            </div>
+
+            @if (Model.Orders.Count == 0)
+            {
+                <p class="empty-state">No orders have been submitted yet.</p>
+            }
+            else
+            {
+                <div class="orders-list">
+                    @foreach (var order in Model.Orders)
+                    {
+                        <article class="order-card">
+                            <div class="order-head">
+                                <h3>@order.Number</h3>
+                                <span class="order-total">@order.TotalAmount.ToString("C")</span>
+                            </div>
+                            <p class="order-date">@order.CreatedUtc.ToLocalTime().ToString("f")</p>
+                            <ul class="order-lines">
+                                @foreach (var line in order.Lines)
+                                {
+                                    <li>@line.Quantity × @line.ProductName at @line.UnitPrice.ToString("C")</li>
+                                }
+                            </ul>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </main>
+</div>
