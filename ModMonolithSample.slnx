@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/ModMonolith.Web/ModMonolith.Web.csproj" />
+    <Project Path="src/ModMonolith.Modules.Customers/ModMonolith.Modules.Customers.csproj" />
     <Project Path="src/ModMonolith.Modules.Catalog/ModMonolith.Modules.Catalog.csproj" />
     <Project Path="src/ModMonolith.Modules.Orders/ModMonolith.Modules.Orders.csproj" />
     <Project Path="src/ModMonolith.Shared/ModMonolith.Shared.csproj" />

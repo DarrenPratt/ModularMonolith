@@ -263,22 +263,31 @@ select:focus {
     border-color: var(--primary);
 }
 
+.customer-grid,
 .product-grid,
 .orders-list {
     display: grid;
     gap: 14px;
 }
 
+.customer-grid,
 .product-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.customer-card,
 .product-card,
 .order-card {
     border: 1px solid var(--line);
     border-radius: var(--radius-md);
     background: rgba(255, 255, 255, 0.76);
     padding: 16px;
+}
+
+.customer-card {
+    display: grid;
+    gap: 14px;
+    min-height: 170px;
 }
 
 .product-card {
@@ -299,6 +308,7 @@ select:focus {
     word-break: break-all;
 }
 
+.customer-stats,
 .product-stats {
     display: flex;
     justify-content: space-between;
@@ -306,6 +316,8 @@ select:focus {
     align-items: center;
 }
 
+.customer-email,
+.customer-since,
 .price,
 .stock,
 .order-total {
@@ -315,6 +327,16 @@ select:focus {
     padding: 8px 12px;
     font-size: 0.88rem;
     font-family: "IBM Plex Mono", monospace;
+}
+
+.customer-email {
+    background: rgba(24, 34, 45, 0.08);
+    color: var(--ink);
+}
+
+.customer-since {
+    background: rgba(15, 118, 110, 0.12);
+    color: var(--primary-strong);
 }
 
 .price,
@@ -406,6 +428,7 @@ select:focus {
         align-items: start;
     }
 
+    .customer-stats,
     .product-stats {
         flex-direction: column;
         align-items: start;

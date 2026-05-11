@@ -8,15 +8,18 @@ This repository contains a small modular monolith sample built with ASP.NET Core
 flowchart LR
     Browser["Browser"]
     Web["ModMonolith.Web<br/>MVC Host"]
+    Customers["Customers Module"]
     Catalog["Catalog Module"]
     Orders["Orders Module"]
     Shared["Shared Contracts + DbContext"]
     Sql["SQL Server"]
 
     Browser --> Web
+    Web --> Customers
     Web --> Catalog
     Web --> Orders
     Web --> Shared
+    Customers --> Shared
     Catalog --> Shared
     Orders --> Shared
     Shared --> Sql
@@ -25,6 +28,7 @@ flowchart LR
 ## Structure
 
 - `src/ModMonolith.Web`: composition root, MVC controllers, Razor views, and ASP.NET Core host
+- `src/ModMonolith.Modules.Customers`: customer management module
 - `src/ModMonolith.Shared`: shared abstractions, contracts, and EF Core `DbContext`
 - `src/ModMonolith.Modules.Catalog`: product catalog module
 - `src/ModMonolith.Modules.Orders`: order management module
@@ -71,6 +75,8 @@ dotnet run --project .\src\ModMonolith.Web
 ```
 
 In Visual Studio, start the `https` profile. The browser launch is configured to open `/`.
+
+In Development, the sample will recreate the database automatically if the schema no longer matches the current module model. This is intentional for a demo app that uses `EnsureCreated` rather than migrations.
 
 ## Sample endpoints
 

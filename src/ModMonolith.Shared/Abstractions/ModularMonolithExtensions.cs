@@ -36,7 +36,28 @@ public static class ModularMonolithExtensions
         return app;
     }
 
-    public static async Task SeedModulesAsync(this WebApplication app, CancellationToken cancellationToken = default)
+    public static async Task SeedModulesAsync(
+        this WebApplication app,
+        bool recreateOnSchemaMismatch = false,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await SeedOnceAsync(app, cancellationToken);
+        }
+        catch (Exception exception) when (recreateOnSchemaMismatch && IsSchemaMismatch(exception))
+        {
+            await using var recoveryScope = app.Services.CreateAsyncScope();
+            var recoveryContext = recoveryScope.ServiceProvider.GetRequiredService<ModMonolithDbContext>();
+
+            await recoveryContext.Database.EnsureDeletedAsync(cancellationToken);
+            await recoveryContext.Database.EnsureCreatedAsync(cancellationToken);
+
+            await SeedOnceAsync(app, cancellationToken);
+        }
+    }
+
+    private static async Task SeedOnceAsync(WebApplication app, CancellationToken cancellationToken)
     {
         await using var scope = app.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
@@ -49,5 +70,10 @@ public static class ModularMonolithExtensions
         {
             await module.SeedAsync(services, cancellationToken);
         }
+    }
+
+    private static bool IsSchemaMismatch(Exception exception)
+    {
+        return exception.ToString().Contains("Invalid object name", StringComparison.OrdinalIgnoreCase);
     }
 }

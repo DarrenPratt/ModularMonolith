@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using ModMonolith.Modules.Customers;
 using ModMonolith.Modules.Catalog;
 using ModMonolith.Modules.Orders;
 using ModMonolith.Shared.Abstractions;
@@ -23,6 +24,7 @@ builder.Services.AddDataProtection()
 
 builder.Services.AddModularMonolith(
     builder.Configuration,
+    new CustomersModule(),
     new CatalogModule(),
     new OrdersModule());
 
@@ -58,11 +60,11 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        await app.SeedModulesAsync();
+        await app.SeedModulesAsync(recreateOnSchemaMismatch: app.Environment.IsDevelopment());
     }
     catch (Exception exception)
     {
-        logger.LogWarning(exception, "Database initialization failed. The MVC shell will still load, but data features will remain unavailable until SQL Server is reachable.");
+        logger.LogWarning(exception, "Database initialization failed. The MVC shell will still load, but data features will remain unavailable until SQL Server is reachable or the schema is brought up to date.");
     }
 }
 

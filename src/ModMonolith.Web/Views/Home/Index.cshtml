@@ -43,6 +43,63 @@
         <section class="card card-wide">
             <div class="section-head">
                 <div>
+                    <p class="section-kicker">Customers Module</p>
+                    <h2>Customers</h2>
+                </div>
+                <a class="button button-secondary" asp-action="Index">Refresh</a>
+            </div>
+
+            @if (Model.Customers.Count == 0)
+            {
+                <p class="empty-state">No customers have been created yet.</p>
+            }
+            else
+            {
+                <div class="customer-grid">
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <article class="customer-card">
+                            <div class="product-meta">
+                                <h3>@customer.Name</h3>
+                                <p class="product-id">@customer.Id</p>
+                            </div>
+                            <div class="customer-stats">
+                                <span class="customer-email">@customer.Email</span>
+                                <span class="customer-since">Joined @customer.CreatedUtc.ToLocalTime().ToString("d")</span>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="card">
+            <div class="section-head">
+                <div>
+                    <p class="section-kicker">Customers Module</p>
+                    <h2>New customer</h2>
+                </div>
+            </div>
+            <form asp-action="CreateCustomer" method="post" class="stacked-form">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="form-message error"></div>
+                <label>
+                    <span>Name</span>
+                    <input asp-for="CustomerForm.Name" placeholder="Taylor Rowan" />
+                    <span asp-validation-for="CustomerForm.Name" class="field-validation"></span>
+                </label>
+                <label>
+                    <span>Email</span>
+                    <input asp-for="CustomerForm.Email" type="email" placeholder="taylor@example.com" />
+                    <span asp-validation-for="CustomerForm.Email" class="field-validation"></span>
+                </label>
+                <button class="button" type="submit">Create customer</button>
+            </form>
+        </section>
+
+        <section class="card card-wide">
+            <div class="section-head">
+                <div>
                     <p class="section-kicker">Catalog Module</p>
                     <h2>Products</h2>
                 </div>
