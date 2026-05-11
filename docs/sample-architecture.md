@@ -2,20 +2,26 @@
 
 This document explains the structure of this repository specifically, not just the general modular monolith pattern.
 
+In snapshot `3`, the repository is no longer a pure single-host modular monolith. `Customers` has been moved into its own API host to demonstrate the first extraction step, while `Catalog` and `Orders` remain inside `ModMonolith.Web`.
+The customer API also uses its own database by default in this snapshot. That keeps the sample aligned with the extraction stage instead of asking a customer-only host to manage one slice of a shared `EnsureCreated` schema.
+
 ## Repository shape
 
-The solution is split into one host application and several supporting projects.
+The solution is split into two ASP.NET hosts and several supporting projects.
 
 ```mermaid
 flowchart LR
-    Web["ModMonolith.Web<br/>ASP.NET Core MVC Host"]
+    Web["ModMonolith.Web<br/>ASP.NET Core MVC Host / BFF"]
+    CustomersApi["ModMonolith.CustomersApi<br/>Customers API Host"]
     Catalog["ModMonolith.Modules.Catalog<br/>Catalog Module"]
     Orders["ModMonolith.Modules.Orders<br/>Orders Module"]
     Shared["ModMonolith.Shared<br/>Contracts + Abstractions + DbContext"]
 
+    Web --> CustomersApi
     Web --> Catalog
     Web --> Orders
     Web --> Shared
+    CustomersApi --> Shared
     Catalog --> Shared
     Orders --> Shared
 ```
@@ -34,7 +40,24 @@ It contains:
 - static assets
 - dependency composition
 
-It is the only project you run directly.
+It is one of the runnable hosts.
+
+In snapshot `3`, it also acts as the consumer of the externalized customer API.
+
+### `ModMonolith.CustomersApi`
+
+This is the dedicated runtime host for the customer capability.
+
+It contains:
+
+- ASP.NET Core startup for the customer API
+- customer module composition
+- customer API surface under `/api/customers/*`
+
+This host makes the difference between module and deployable API explicit:
+
+- `ModMonolith.Modules.Customers` is still the business module
+- `ModMonolith.CustomersApi` is the host that runs and exposes it
 
 ### `ModMonolith.Modules.Catalog`
 

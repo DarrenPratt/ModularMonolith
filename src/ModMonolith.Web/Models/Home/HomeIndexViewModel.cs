@@ -23,5 +23,5 @@ public sealed class HomeIndexViewModel
 
     public string? StatusType { get; set; }
 
-    public string? DatabaseUnavailableMessage { get; set; }
+    public string? DependencyUnavailableMessage { get; set; }
 }

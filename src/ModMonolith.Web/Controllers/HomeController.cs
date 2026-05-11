@@ -1,11 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ModMonolith.Shared.Contracts.Customers;
-using ModMonolith.Modules.Orders.Domain;
 using ModMonolith.Shared.Abstractions;
 using ModMonolith.Shared.Contracts.Catalog;
-using ModMonolith.Shared.Persistence;
+using ModMonolith.Shared.Contracts.Orders;
 using ModMonolith.Web.Models.Home;
 
 namespace ModMonolith.Web.Controllers;
@@ -14,7 +12,7 @@ public sealed class HomeController(
     ModuleRegistry moduleRegistry,
     IProductCatalog productCatalog,
     ICustomerDirectory customerDirectory,
-    ModMonolithDbContext dbContext,
+    IOrderService orderService,
     ILogger<HomeController> logger) : Controller
 {
     [HttpGet]
@@ -64,7 +62,7 @@ public sealed class HomeController(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to create customer.");
-            ModelState.AddModelError(string.Empty, "The customer could not be created because the database is unavailable.");
+            ModelState.AddModelError(string.Empty, "The customer could not be created because the Customers API is unavailable.");
             var failedModel = await BuildIndexViewModelAsync(
                 cancellationToken,
                 customerInput: input,
@@ -92,18 +90,24 @@ public sealed class HomeController(
 
         try
         {
-            await dbContext.AddAsync(new ModMonolith.Modules.Catalog.Domain.Product
-            {
-                Id = Guid.NewGuid(),
-                Name = input.Name.Trim(),
-                Price = input.Price,
-                StockQuantity = input.StockQuantity
-            }, cancellationToken);
-
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await productCatalog.CreateAsync(
+                input.Name,
+                input.Price,
+                input.StockQuantity,
+                cancellationToken);
             TempData["StatusMessage"] = $"Created product '{input.Name}'.";
             TempData["StatusType"] = "success";
             return RedirectToAction(nameof(Index));
+        }
+        catch (InvalidOperationException exception)
+        {
+            ModelState.AddModelError("ProductForm.Name", exception.Message);
+            var invalidBusinessModel = await BuildIndexViewModelAsync(
+                cancellationToken,
+                customerInput: new CreateCustomerInputModel(),
+                productInput: input,
+                orderInput: new CreateOrderInputModel());
+            return View("Index", invalidBusinessModel);
         }
         catch (Exception exception)
         {
@@ -136,69 +140,30 @@ public sealed class HomeController(
 
         try
         {
-            var product = (await productCatalog.GetByIdsAsync([input.ProductId], cancellationToken)).SingleOrDefault();
-
-            if (product is null)
-            {
-                ModelState.AddModelError("OrderForm.ProductId", "The selected product no longer exists.");
-                var missingModel = await BuildIndexViewModelAsync(
-                    cancellationToken,
-                    customerInput: new CreateCustomerInputModel(),
-                    productInput: new CreateProductInputModel(),
-                    orderInput: input);
-                return View("Index", missingModel);
-            }
-
-            if (product.StockOnHand < input.Quantity)
-            {
-                ModelState.AddModelError("OrderForm.Quantity", $"Only {product.StockOnHand} units of '{product.Name}' are available.");
-                var stockModel = await BuildIndexViewModelAsync(
-                    cancellationToken,
-                    customerInput: new CreateCustomerInputModel(),
-                    productInput: new CreateProductInputModel(),
-                    orderInput: input);
-                return View("Index", stockModel);
-            }
-
-            await productCatalog.ReserveStockAsync(
-                [new ProductReservation(input.ProductId, input.Quantity)],
+            var order = await orderService.CreateAsync(
+                new CreateOrder(
+                    input.CustomerId,
+                    [new CreateOrderLine(input.ProductId, input.Quantity)]),
                 cancellationToken);
-
-            var order = new Order
-            {
-                Id = Guid.NewGuid(),
-                Number = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}",
-                CreatedUtc = DateTime.UtcNow,
-                TotalAmount = product.Price * input.Quantity,
-                Lines =
-                [
-                    new OrderLine
-                    {
-                        Id = Guid.NewGuid(),
-                        ProductId = product.Id,
-                        ProductName = product.Name,
-                        Quantity = input.Quantity,
-                        UnitPrice = product.Price
-                    }
-                ]
-            };
-
-            foreach (var line in order.Lines)
-            {
-                line.OrderId = order.Id;
-            }
-
-            dbContext.Add(order);
-            await dbContext.SaveChangesAsync(cancellationToken);
 
             TempData["StatusMessage"] = $"Submitted order '{order.Number}'.";
             TempData["StatusType"] = "success";
             return RedirectToAction(nameof(Index));
         }
+        catch (InvalidOperationException exception)
+        {
+            ModelState.AddModelError("OrderForm.CustomerId", exception.Message);
+            var invalidBusinessModel = await BuildIndexViewModelAsync(
+                cancellationToken,
+                customerInput: new CreateCustomerInputModel(),
+                productInput: new CreateProductInputModel(),
+                orderInput: input);
+            return View("Index", invalidBusinessModel);
+        }
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Failed to create order.");
-            ModelState.AddModelError(string.Empty, "The order could not be submitted because the database is unavailable.");
+            ModelState.AddModelError(string.Empty, "The order could not be submitted because a dependent service or the database is unavailable.");
             var failedModel = await BuildIndexViewModelAsync(
                 cancellationToken,
                 customerInput: new CreateCustomerInputModel(),
@@ -230,17 +195,39 @@ public sealed class HomeController(
             StatusType = TempData["StatusType"] as string
         };
 
+        var unavailableDependencies = new List<string>();
+
         try
         {
             model.Customers = await customerDirectory.GetAllAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Customer data could not be loaded from the Customers API.");
+            model.Customers = [];
+            unavailableDependencies.Add("Customers API");
+        }
+
+        try
+        {
             model.Products = await productCatalog.GetAllAsync(cancellationToken);
-            model.Orders = await dbContext.Set<Order>()
-                .AsNoTracking()
-                .OrderByDescending(order => order.CreatedUtc)
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Catalog data could not be loaded.");
+            model.Products = [];
+            unavailableDependencies.Add("Catalog database");
+        }
+
+        try
+        {
+            model.Orders = (await orderService.GetAllAsync(cancellationToken))
                 .Select(order => new OrderSummaryViewModel
                 {
                     Id = order.Id,
                     Number = order.Number,
+                    CustomerId = order.CustomerId,
+                    CustomerName = order.CustomerName,
                     CreatedUtc = order.CreatedUtc,
                     TotalAmount = order.TotalAmount,
                     Lines = order.Lines.Select(line => new OrderLineSummaryViewModel
@@ -251,20 +238,29 @@ public sealed class HomeController(
                         UnitPrice = line.UnitPrice
                     }).ToList()
                 })
-                .ToListAsync(cancellationToken);
+                .ToList();
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Dashboard data could not be loaded.");
-            model.DatabaseUnavailableMessage = "The application started, but SQL Server is not reachable. Start the database and refresh the page.";
-            model.Customers = [];
-            model.Products = [];
+            logger.LogWarning(exception, "Order data could not be loaded.");
             model.Orders = [];
+            unavailableDependencies.Add("Orders database");
+        }
+
+        if (unavailableDependencies.Count > 0)
+        {
+            model.DependencyUnavailableMessage =
+                $"The application started, but these dependencies are unavailable: {string.Join(", ", unavailableDependencies)}. Start the missing service or SQL Server, then refresh the page.";
         }
 
         if (model.OrderForm.ProductId == Guid.Empty && model.Products.Count > 0)
         {
             model.OrderForm.ProductId = model.Products[0].Id;
+        }
+
+        if (model.OrderForm.CustomerId == Guid.Empty && model.Customers.Count > 0)
+        {
+            model.OrderForm.CustomerId = model.Customers[0].Id;
         }
 
         return model;

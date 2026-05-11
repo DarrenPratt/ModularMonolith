@@ -7,10 +7,10 @@
     <header class="hero">
         <div class="hero-copy">
             <p class="eyebrow">ASP.NET Core MVC + SQL Server</p>
-            <h1>Modular monolith, expressed through controllers and views.</h1>
+            <h1>Modular monolith evolving toward services.</h1>
             <p class="lede">
-                One deployable ASP.NET application, one relational database, and modules that still own their
-                boundaries while the user-facing page is rendered with the model-view-controller pattern.
+                The web experience is still rendered with MVC, while the `Customers` capability has moved to its own
+                host as the first extraction step and `Catalog` plus `Orders` remain in-process.
             </p>
         </div>
         <div class="hero-panel">
@@ -21,14 +21,14 @@
                     <li>@moduleName</li>
                 }
             </ul>
-            <div class="status-line">The module APIs remain available under <code>/api/*</code>.</div>
+            <div class="status-line">Local APIs remain under <code>/api/*</code>, and customer endpoints now live on the dedicated Customers API host.</div>
         </div>
     </header>
 
-    @if (!string.IsNullOrWhiteSpace(Model.DatabaseUnavailableMessage))
+    @if (!string.IsNullOrWhiteSpace(Model.DependencyUnavailableMessage))
     {
         <section class="banner banner-warning">
-            @Model.DatabaseUnavailableMessage
+            @Model.DependencyUnavailableMessage
         </section>
     }
 
@@ -43,7 +43,7 @@
         <section class="card card-wide">
             <div class="section-head">
                 <div>
-                    <p class="section-kicker">Customers Module</p>
+                    <p class="section-kicker">Customers API</p>
                     <h2>Customers</h2>
                 </div>
                 <a class="button button-secondary" asp-action="Index">Refresh</a>
@@ -76,7 +76,7 @@
         <section class="card">
             <div class="section-head">
                 <div>
-                    <p class="section-kicker">Customers Module</p>
+                    <p class="section-kicker">Customers API</p>
                     <h2>New customer</h2>
                 </div>
             </div>
@@ -170,6 +170,18 @@
                 @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="form-message error"></div>
                 <label>
+                    <span>Customer</span>
+                    @if (Model.Customers.Count == 0)
+                    {
+                        <select asp-for="OrderForm.CustomerId" asp-items="@(new SelectList(Array.Empty<object>()))" disabled="disabled"></select>
+                    }
+                    else
+                    {
+                        <select asp-for="OrderForm.CustomerId" asp-items="@(new SelectList(Model.Customers, "Id", "Name"))"></select>
+                    }
+                    <span asp-validation-for="OrderForm.CustomerId" class="field-validation"></span>
+                </label>
+                <label>
                     <span>Product</span>
                     @if (Model.Products.Count == 0)
                     {
@@ -186,7 +198,7 @@
                     <input asp-for="OrderForm.Quantity" type="number" min="1" />
                     <span asp-validation-for="OrderForm.Quantity" class="field-validation"></span>
                 </label>
-                @if (Model.Products.Count == 0)
+                @if (Model.Products.Count == 0 || Model.Customers.Count == 0)
                 {
                     <button class="button" type="submit" disabled="disabled">Submit order</button>
                 }
@@ -220,6 +232,7 @@
                                 <h3>@order.Number</h3>
                                 <span class="order-total">@order.TotalAmount.ToString("C")</span>
                             </div>
+                            <p class="order-customer">Customer: @order.CustomerName</p>
                             <p class="order-date">@order.CreatedUtc.ToLocalTime().ToString("f")</p>
                             <ul class="order-lines">
                                 @foreach (var line in order.Lines)

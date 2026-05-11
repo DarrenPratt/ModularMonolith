@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ModMonolith.Shared\ModMonolith.Shared.csproj" />
-    <ProjectReference Include="..\ModMonolith.Modules.Customers\ModMonolith.Modules.Customers.csproj" />
     <ProjectReference Include="..\ModMonolith.Modules.Catalog\ModMonolith.Modules.Catalog.csproj" />
     <ProjectReference Include="..\ModMonolith.Modules.Orders\ModMonolith.Modules.Orders.csproj" />
   </ItemGroup>
